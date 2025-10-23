@@ -1,5 +1,7 @@
 # PokéAgent Challenge: RPG Speedrunning Agent in Pokémon Emerald
 
+Run using google cloud vertex AI: https://www.youtube.com/watch?v=SJ0NhnKP9qo
+
 ![PokéAgent Challenge: RPG Speedrunning Agent in Pokémon Emerald](emerald.png)
 
 An AI agent that plays Pokémon Emerald using vision-language models to perceive the game environment, plan actions, and execute gameplay strategies. This is a **starter kit** designed to be easily customizable for different VLMs and agent behaviors.
