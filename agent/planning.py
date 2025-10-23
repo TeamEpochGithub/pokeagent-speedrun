@@ -86,6 +86,7 @@ def planning_step(memory_context, current_plan, slow_thinking_needed, state_data
            - How to minimize backtracking using map layout
            - Shortcuts or sequence breaks considering terrain
            - Wild encounter management (avoid/seek based on needs)
+           - Encourage exploring unseen warps or doors for faster routing  
         
         Format as a clear, actionable plan focusing on speed and efficiency.
         """

@@ -111,22 +111,13 @@ class OpenAIBackend(VLMBackend):
             result = response.choices[0].message.content
             duration = time.time() - start_time
             
-            # Extract token usage if available
-            token_usage = {}
-            if hasattr(response, 'usage'):
-                token_usage = {
-                    "prompt_tokens": response.usage.prompt_tokens,
-                    "completion_tokens": response.usage.completion_tokens,
-                    "total_tokens": response.usage.total_tokens
-                }
-            
             # Log the interaction
             log_llm_interaction(
                 interaction_type=f"openai_{module_name}",
                 prompt=text,
                 response=result,
                 duration=duration,
-                metadata={"model": self.model_name, "backend": "openai", "has_image": True, "token_usage": token_usage},
+                metadata={"model": self.model_name, "backend": "openai", "has_image": True},
                 model_info={"model": self.model_name, "backend": "openai"}
             )
             
@@ -156,22 +147,13 @@ class OpenAIBackend(VLMBackend):
             result = response.choices[0].message.content
             duration = time.time() - start_time
             
-            # Extract token usage if available
-            token_usage = {}
-            if hasattr(response, 'usage'):
-                token_usage = {
-                    "prompt_tokens": response.usage.prompt_tokens,
-                    "completion_tokens": response.usage.completion_tokens,
-                    "total_tokens": response.usage.total_tokens
-                }
-            
             # Log the interaction
             log_llm_interaction(
                 interaction_type=f"openai_{module_name}",
                 prompt=text,
                 response=result,
                 duration=duration,
-                metadata={"model": self.model_name, "backend": "openai", "has_image": False, "token_usage": token_usage},
+                metadata={"model": self.model_name, "backend": "openai", "has_image": False},
                 model_info={"model": self.model_name, "backend": "openai"}
             )
             
@@ -287,7 +269,6 @@ class LocalHuggingFaceBackend(VLMBackend):
         
         self.model_name = model_name
         self.device = device
-        self.torch = torch
         
         logger.info(f"Loading local VLM model: {model_name}")
         
@@ -325,13 +306,14 @@ class LocalHuggingFaceBackend(VLMBackend):
     def _generate_response(self, inputs: Dict[str, Any], text: str, module_name: str) -> str:
         """Generate response using the local model"""
         try:
+            import torch
             
             # Log the prompt
             prompt_preview = text[:2000] + "..." if len(text) > 2000 else text
             logger.info(f"[{module_name}] LOCAL HF VLM QUERY:")
             logger.info(f"[{module_name}] PROMPT: {prompt_preview}")
             
-            with self.torch.no_grad():
+            with torch.no_grad():
                 # Ensure all inputs are on the correct device
                 if hasattr(self.model, 'device'):
                     device = self.model.device
@@ -506,8 +488,8 @@ class VertexBackend(VLMBackend):
         # Initialize the model
         self.client = genai.Client(
             vertexai=True,
-            project='pokeagent-011',
-            location='us-central1',
+            project='pokeagent-475917',
+            location='europe-west4',
         )
         self.genai = genai
         
@@ -652,7 +634,6 @@ class GeminiBackend(VLMBackend):
     
     def get_query(self, img: Union[Image.Image, np.ndarray], text: str, module_name: str = "Unknown") -> str:
         """Process an image and text prompt using Gemini API"""
-        start_time = time.time()
         try:
             image = self._prepare_image(img)
             
@@ -676,27 +657,6 @@ class GeminiBackend(VLMBackend):
                     return self.get_text_query(text, module_name)
             
             result = response.text
-            duration = time.time() - start_time
-            
-            # Extract token usage if available
-            token_usage = {}
-            if hasattr(response, 'usage_metadata'):
-                usage = response.usage_metadata
-                token_usage = {
-                    "prompt_tokens": getattr(usage, 'prompt_token_count', 0),
-                    "completion_tokens": getattr(usage, 'candidates_token_count', 0),
-                    "total_tokens": getattr(usage, 'total_token_count', 0)
-                }
-            
-            # Log the interaction
-            log_llm_interaction(
-                interaction_type=f"gemini_{module_name}",
-                prompt=text,
-                response=result,
-                duration=duration,
-                metadata={"model": self.model_name, "backend": "gemini", "has_image": True, "token_usage": token_usage},
-                model_info={"model": self.model_name, "backend": "gemini"}
-            )
             
             # Log the response
             result_preview = result[:1000] + "..." if len(result) > 1000 else result
@@ -717,7 +677,6 @@ class GeminiBackend(VLMBackend):
     
     def get_text_query(self, text: str, module_name: str = "Unknown") -> str:
         """Process a text-only prompt using Gemini API"""
-        start_time = time.time()
         try:
             # Log the prompt
             prompt_preview = text[:2000] + "..." if len(text) > 2000 else text
@@ -735,27 +694,6 @@ class GeminiBackend(VLMBackend):
                     return "I cannot analyze this content due to safety restrictions. I'll proceed with a basic action: press 'A' to continue."
             
             result = response.text
-            duration = time.time() - start_time
-            
-            # Extract token usage if available
-            token_usage = {}
-            if hasattr(response, 'usage_metadata'):
-                usage = response.usage_metadata
-                token_usage = {
-                    "prompt_tokens": getattr(usage, 'prompt_token_count', 0),
-                    "completion_tokens": getattr(usage, 'candidates_token_count', 0),
-                    "total_tokens": getattr(usage, 'total_token_count', 0)
-                }
-            
-            # Log the interaction
-            log_llm_interaction(
-                interaction_type=f"gemini_{module_name}",
-                prompt=text,
-                response=result,
-                duration=duration,
-                metadata={"model": self.model_name, "backend": "gemini", "has_image": False, "token_usage": token_usage},
-                model_info={"model": self.model_name, "backend": "gemini"}
-            )
             
             # Log the response
             result_preview = result[:1000] + "..." if len(result) > 1000 else result
@@ -829,13 +767,25 @@ class VLM:
     
     def get_query(self, img: Union[Image.Image, np.ndarray], text: str, module_name: str = "Unknown") -> str:
         """Process an image and text prompt"""
+        start_time = time.time()
+        
         try:
-            # Backend handles its own logging, so we don't duplicate it here
             result = self.backend.get_query(img, text, module_name)
+            duration = time.time() - start_time
+            
+            # Log the interaction
+            log_llm_interaction(
+                interaction_type=f"{self.backend.__class__.__name__.lower()}_{module_name}",
+                prompt=text,
+                response=result,
+                duration=duration,
+                metadata={"model": self.model_name, "backend": self.backend.__class__.__name__, "has_image": True},
+                model_info={"model": self.model_name, "backend": self.backend.__class__.__name__}
+            )
+            
             return result
         except Exception as e:
-            # Only log errors that aren't already logged by the backend
-            duration = 0  # Backend tracks actual duration
+            duration = time.time() - start_time
             log_llm_error(
                 interaction_type=f"{self.backend.__class__.__name__.lower()}_{module_name}",
                 prompt=text,
@@ -846,13 +796,25 @@ class VLM:
     
     def get_text_query(self, text: str, module_name: str = "Unknown") -> str:
         """Process a text-only prompt"""
+        start_time = time.time()
+        
         try:
-            # Backend handles its own logging, so we don't duplicate it here
             result = self.backend.get_text_query(text, module_name)
+            duration = time.time() - start_time
+            
+            # Log the interaction
+            log_llm_interaction(
+                interaction_type=f"{self.backend.__class__.__name__.lower()}_{module_name}",
+                prompt=text,
+                response=result,
+                duration=duration,
+                metadata={"model": self.model_name, "backend": self.backend.__class__.__name__, "has_image": False},
+                model_info={"model": self.model_name, "backend": self.backend.__class__.__name__}
+            )
+            
             return result
         except Exception as e:
-            # Only log errors that aren't already logged by the backend
-            duration = 0  # Backend tracks actual duration
+            duration = time.time() - start_time
             log_llm_error(
                 interaction_type=f"{self.backend.__class__.__name__.lower()}_{module_name}",
                 prompt=text,
